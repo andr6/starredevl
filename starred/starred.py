@@ -9,9 +9,12 @@ from github3 import GitHub
 from github3.exceptions import NotFoundError
 from . import VERSION
 from .githubgql import GitHubGQL
+from .llm_categorizer import categorize as llm_categorize, CATEGORIES
 
 
 DEFAULT_CATEGORY = 'Others'
+# Categories used when LLM categorization is enabled
+CUSTOM_CATEGORIES = CATEGORIES
 TEXT_LENGTH_LIMIT = 200
 
 desc = '''<!--lint disable awesome-contributing awesome-license awesome-list-item match-punctuation no-repeat-punctuation no-undefined-references awesome-spell-check-->
@@ -53,8 +56,9 @@ def html_escape(text):
 @click.option('--filename', default='README.md', show_default=True, help='file name')
 @click.option('--message', default='update awesome-stars, created by starred', show_default=True, help='commit message')
 @click.option('--private', is_flag=True, default=False, show_default=True, help='include private repos')
+@click.option('--openai-key', envvar='OPENAI_API_KEY', default='', show_default=False, help='OpenAI API key for LLM categorization')
 @click.version_option(version=VERSION, prog_name='starred')
-def starred(username, token, sort, topic, repository, filename, message, private, topic_limit):
+def starred(username, token, sort, topic, repository, filename, message, private, topic_limit, openai_key):
     """GitHub starred
 
     creating your own Awesome List by GitHub stars!
@@ -86,6 +90,16 @@ def starred(username, token, sort, topic, repository, filename, message, private
 
         description = html_escape(s.description).replace('\n', '').strip()[:TEXT_LENGTH_LIMIT] if s.description else ''
 
+        if openai_key:
+            category = llm_categorize(description, s.topics, openai_key)
+            sub_category = s.language or (s.topics[0] if s.topics else DEFAULT_CATEGORY)
+            if category not in repo_dict:
+                repo_dict[category] = {}
+            if sub_category not in repo_dict[category]:
+                repo_dict[category][sub_category] = []
+            repo_dict[category][sub_category].append([s.name, s.url, description])
+            continue
+
         if topic:
             for category in s.topics or [DEFAULT_CATEGORY.lower()]:
                 if category not in repo_dict:
@@ -108,10 +122,21 @@ def starred(username, token, sort, topic, repository, filename, message, private
 
     for category in repo_dict:
         click.echo('## {} \n'.format(category.replace('#', '# #')))
-        for repo in repo_dict[category]:
-            data = u'- [{}]({}) - {}'.format(*repo)
-            click.echo(data)
-        click.echo('')
+        if isinstance(repo_dict[category], dict):
+            sub_dict = repo_dict[category]
+            if sort:
+                sub_dict = OrderedDict(sorted(sub_dict.items(), key=lambda s: s[0]))
+            for sub in sub_dict:
+                click.echo(f'### {sub}')
+                for repo in sub_dict[sub]:
+                    data = u'- [{}]({}) - {}'.format(*repo)
+                    click.echo(data)
+                click.echo('')
+        else:
+            for repo in repo_dict[category]:
+                data = u'- [{}]({}) - {}'.format(*repo)
+                click.echo(data)
+            click.echo('')
 
     click.echo(license_.format(username=username))
 

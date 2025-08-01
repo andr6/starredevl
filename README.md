@@ -40,9 +40,26 @@ Options:
   --filename TEXT        file name  [default: README.md]
   --message TEXT         commit message  [default: update stars]
   --private              include private repos  [default: False]
+  --openai-key TEXT      OpenAI API key for LLM categorization
   --version              Show the version and exit.
   --help                 Show this message and exit.
 ```
+
+### LLM based categorization
+
+Providing an OpenAI API key via `--openai-key` enables automatic
+categorization of your starred repositories. The LLM groups each
+repository into one of the following main categories:
+
+- Cyber Security
+- Coding
+- Machine Learning
+- IT
+- Network
+- Others
+
+Within each category the list is further organised by language
+as a sub category.
 
 ## Demo
 
