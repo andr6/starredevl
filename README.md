@@ -40,15 +40,19 @@ Options:
   --filename TEXT        file name  [default: README.md]
   --message TEXT         commit message  [default: update stars]
   --private              include private repos  [default: False]
-  --openai-key TEXT      OpenAI API key for LLM categorization
+  --llm-provider [openai|groq|ollama]
+                         LLM provider to use  [default: openai]
+  --model TEXT           Model name for the provider  [default: gpt-3.5-turbo]
+  --llm-key TEXT         API key for LLM provider
   --version              Show the version and exit.
   --help                 Show this message and exit.
 ```
 
 ### LLM based categorization
 
-Providing an OpenAI API key via `--openai-key` enables automatic
-categorization of your starred repositories. The LLM groups each
+Providing an API key via `--llm-key` enables automatic
+categorization of your starred repositories using the selected provider.
+The LLM groups each
 repository into one of the following main categories:
 
 - Cyber Security
@@ -60,6 +64,10 @@ repository into one of the following main categories:
 
 Within each category the list is further organised by language
 as a sub category.
+
+When `--llm-provider` is set to `groq` or `ollama` the request is sent to
+their respective OpenAI-compatible endpoints (`https://api.groq.com/openai/v1`
+and `http://localhost:11434/v1`).
 
 ## Demo
 

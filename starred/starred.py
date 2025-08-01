@@ -7,9 +7,9 @@ from collections import OrderedDict
 import click
 from github3 import GitHub
 from github3.exceptions import NotFoundError
-from . import VERSION
-from .githubgql import GitHubGQL
-from .llm_categorizer import categorize as llm_categorize, CATEGORIES
+from starred import VERSION
+from starred.githubgql import GitHubGQL
+from starred.llm_categorizer import categorize as llm_categorize, CATEGORIES
 
 
 DEFAULT_CATEGORY = 'Others'
@@ -56,9 +56,11 @@ def html_escape(text):
 @click.option('--filename', default='README.md', show_default=True, help='file name')
 @click.option('--message', default='update awesome-stars, created by starred', show_default=True, help='commit message')
 @click.option('--private', is_flag=True, default=False, show_default=True, help='include private repos')
-@click.option('--openai-key', envvar='OPENAI_API_KEY', default='', show_default=False, help='OpenAI API key for LLM categorization')
+@click.option('--llm-provider', default='openai', type=click.Choice(['openai', 'groq', 'ollama']), show_default=True, help='LLM provider to use')
+@click.option('--model', default='gpt-3.5-turbo', show_default=True, help='Model name for the provider')
+@click.option('--llm-key', envvar='LLM_API_KEY', default='', show_default=False, help='API key for LLM provider')
 @click.version_option(version=VERSION, prog_name='starred')
-def starred(username, token, sort, topic, repository, filename, message, private, topic_limit, openai_key):
+def starred(username, token, sort, topic, repository, filename, message, private, topic_limit, llm_provider, model, llm_key):
     """GitHub starred
 
     creating your own Awesome List by GitHub stars!
@@ -90,8 +92,8 @@ def starred(username, token, sort, topic, repository, filename, message, private
 
         description = html_escape(s.description).replace('\n', '').strip()[:TEXT_LENGTH_LIMIT] if s.description else ''
 
-        if openai_key:
-            category = llm_categorize(description, s.topics, openai_key)
+        if llm_provider:
+            category = llm_categorize(description, s.topics, llm_key, model=model, provider=llm_provider)
             sub_category = s.language or (s.topics[0] if s.topics else DEFAULT_CATEGORY)
             if category not in repo_dict:
                 repo_dict[category] = {}
