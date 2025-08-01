@@ -1,8 +1,14 @@
 CATEGORIES = ["Cyber Security", "Coding", "Machine Learning", "IT", "Network", "Others"]
 
 
-def categorize(description: str, topics: list[str], api_key: str) -> str:
-    """Categorize a repository using OpenAI LLM.
+def categorize(
+    description: str,
+    topics: list[str],
+    api_key: str,
+    model: str = "gpt-3.5-turbo",
+    provider: str = "openai",
+) -> str:
+    """Categorize a repository using a selected LLM provider.
 
     Parameters
     ----------
@@ -11,9 +17,14 @@ def categorize(description: str, topics: list[str], api_key: str) -> str:
     topics : list[str]
         Topics of the repository.
     api_key : str
-        OpenAI API key. If empty, ``Others`` will be returned.
+        API key for the provider. If empty, ``Others`` will be returned.
+    model : str, optional
+        Model name to use when querying the provider.
+    provider : str, optional
+        Provider of the LLM. Supported values are ``openai``, ``groq`` and
+        ``ollama``.
     """
-    if not api_key:
+    if not api_key and provider != "ollama":
         return "Others"
 
     try:
@@ -21,7 +32,16 @@ def categorize(description: str, topics: list[str], api_key: str) -> str:
     except Exception:
         return "Others"
 
-    openai.api_key = api_key
+    if provider == "groq":
+        openai.base_url = "https://api.groq.com/openai/v1"
+        openai.api_key = api_key
+    elif provider == "ollama":
+        openai.base_url = "http://localhost:11434/v1"
+        # Ollama may not require an API key
+        openai.api_key = api_key or "ollama"
+    else:
+        openai.base_url = None
+        openai.api_key = api_key
     prompt = (
         "Select one category from "
         f"{', '.join(CATEGORIES)} for a GitHub repository "
@@ -30,7 +50,7 @@ def categorize(description: str, topics: list[str], api_key: str) -> str:
     )
     try:
         resp = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model=model,
             messages=[{"role": "user", "content": prompt}],
             max_tokens=5,
             temperature=0,
