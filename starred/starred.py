@@ -90,29 +90,42 @@ def starred(username, token, sort, topic, repository, filename, message, private
         if s.is_private and not private:
             continue
 
-        description = html_escape(s.description).replace('\n', '').strip()[:TEXT_LENGTH_LIMIT] if s.description else ''
+        # Full description for LLM analysis (not truncated)
+        full_description = html_escape(s.description).replace('\n', ' ').strip() if s.description else ''
+        # Truncated description for display in markdown
+        display_description = full_description[:TEXT_LENGTH_LIMIT] if full_description else ''
 
         if llm_provider:
-            category = llm_categorize(description, s.topics, llm_key, model=model, provider=llm_provider)
+            # Pass enhanced context for better categorization
+            category = llm_categorize(
+                description=full_description,
+                topics=s.topics,
+                api_key=llm_key,
+                model=model,
+                provider=llm_provider,
+                repo_name=s.name,
+                language=s.language,
+                stargazer_count=s.stargazer_count
+            )
             sub_category = s.language or (s.topics[0] if s.topics else DEFAULT_CATEGORY)
             if category not in repo_dict:
                 repo_dict[category] = {}
             if sub_category not in repo_dict[category]:
                 repo_dict[category][sub_category] = []
-            repo_dict[category][sub_category].append([s.name, s.url, description])
+            repo_dict[category][sub_category].append([s.name, s.url, display_description])
             continue
 
         if topic:
             for category in s.topics or [DEFAULT_CATEGORY.lower()]:
                 if category not in repo_dict:
                     repo_dict[category] = []
-                repo_dict[category].append([s.name, s.url, description])
+                repo_dict[category].append([s.name, s.url, display_description])
         else:
             category = s.language or DEFAULT_CATEGORY
 
             if category not in repo_dict:
                 repo_dict[category] = []
-            repo_dict[category].append([s.name, s.url, description])
+            repo_dict[category].append([s.name, s.url, display_description])
 
     if sort:
         repo_dict = OrderedDict(sorted(repo_dict.items(), key=lambda cate: cate[0]))
